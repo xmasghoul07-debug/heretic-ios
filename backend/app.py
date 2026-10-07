@@ -1,54 +1,91 @@
-from __future__ import annotations
+import os
+import json
+import toml
+from typing import Optional
+from fastapi import FastAPI, UploadFile, File, HTTPException, Header
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
-from fastapi import FastAPI
-from pydantic import BaseModel, Field
+app = FastAPI(title="Heretic AI Backend")
 
-app = FastAPI(title="Heretic AI API", version="0.1.0")
+# CORS configuration - allow all origins for development
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
+# State
+active_config = {}
 
 class ChatRequest(BaseModel):
-    message: str = Field(..., min_length=1)
-    conversation_id: str | None = None
+    message: str
+    stream: bool = False
 
+@app.get("/")
+def health():
+    """Health check endpoint"""
+    return {
+        "status": "online",
+        "engine": "Heretic AI v1.0",
+        "mode": "production"
+    }
 
-class ChatResponse(BaseModel):
-    reply: str
-    conversation_id: str
+@app.post("/api/chat")
+async def chat(request: ChatRequest):
+    """
+    Main chat endpoint. Processes user messages.
+    In production, this connects to your Heretic model or OpenAI API.
+    """
+    user_message = request.message.strip()
+    
+    if not user_message:
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+    
+    # Get style modifier from config
+    modifier = active_config.get("style", {}).get("modifier", "Direct and thorough")
+    
+    # Mock response - replace with real model inference
+    response = f"[Heretic]: Processing '{user_message[:40]}...' with modifier: {modifier}"
+    
+    return {"response": response}
 
+@app.post("/api/config/load")
+async def load_config(file: UploadFile = File(...)):
+    """
+    Load TOML configuration files
+    """
+    global active_config
+    
+    if not file.filename.endswith('.toml'):
+        raise HTTPException(status_code=400, detail="Only .toml files allowed")
+    
+    try:
+        content = await file.read()
+        parsed = toml.loads(content.decode("utf-8"))
+        active_config = parsed
+        return {
+            "status": "success",
+            "file": file.filename,
+            "keys": list(parsed.keys())
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Parse error: {str(e)}")
 
-def generate_reply(prompt: str) -> str:
-    """Replace this with your model runtime or API client."""
-    text = prompt.strip()
-    lowered = text.lower()
-
-    if not text:
-        return "Please send a message."
-    if "hello" in lowered or "hi" in lowered:
-        return "Hello! I'm your Heretic-style AI assistant. Ask me anything."
-    if "time" in lowered:
-        return "I don't have a real clock in this demo, but the backend is running correctly."
-    if "name" in lowered:
-        return "I'm a demo Heretic-inspired AI assistant running on this server."
-
-    return (
-        "This is a working starter backend for a Heretic-style chat app. "
-        "Swap out the mock generator in `generate_reply()` for your actual model inference."
-    )
-
-
-@app.get("/health")
-async def health() -> dict[str, str]:
-    return {"status": "ok"}
-
-
-@app.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest) -> ChatResponse:
-    conversation_id = request.conversation_id or "demo-conversation"
-    reply = generate_reply(request.message)
-    return ChatResponse(reply=reply, conversation_id=conversation_id)
-
+@app.get("/api/status")
+def status():
+    """Get current system status"""
+    return {
+        "connected": True,
+        "config_loaded": bool(active_config),
+        "config_keys": list(active_config.keys()) if active_config else []
+    }
 
 if __name__ == "__main__":
     import uvicorn
-
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

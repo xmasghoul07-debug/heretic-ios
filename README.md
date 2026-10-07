@@ -1,58 +1,128 @@
-# Heretic iPhone
+# Heretic AI - Auto-Configuring iPhone App
 
-A starter iPhone app and backend for a Heretic-style uncensored AI chat experience.
+A complete Heretic AI browser chatbot that **auto-detects and configures itself**. No manual setup needed.
 
-This repo contains:
-- `backend/` — FastAPI server that exposes a chat endpoint
-- `ios/` — SwiftUI iPhone app shell that sends messages and displays replies
+## Key Features
 
-It is intentionally a working MVP scaffold, not a full production model wrapper. The backend currently uses a mock reply generator so the app works immediately, and you can swap in your actual uncensored model client later.
+✓ **Auto-configuration** - detects backend automatically  
+✓ **Works on iPhone** - Safari + home screen app  
+✓ **Demo mode** - works without backend  
+✓ **Deploys anywhere** - Netlify (frontend) + Render (backend)  
+✓ **Terminal UI** - clean monospace interface  
+✓ **Expandable** - easy to add real LLM  
 
-## Architecture
+## How It Works
 
-- iPhone app: SwiftUI chat UI
-- API: FastAPI backend
-- Model integration point: `backend/app.py` -> `generate_reply()`
-- Transport: JSON over HTTP
+1. Open the app on iPhone
+2. It auto-detects your backend or runs in demo mode
+3. Start typing and chatting
+4. No configuration needed
 
-## Quick start
+## Deployment (5 minutes)
 
-### 1) Start the backend
+### Step 1: Deploy Backend (Render)
 
+1. Go to [render.com](https://render.com)
+2. Click "New +" → "Web Service"
+3. Connect your GitHub repo
+4. Set:
+   - Build command: `pip install -r backend/requirements.txt`
+   - Start command: `cd backend && uvicorn app:app --host 0.0.0.0 --port $PORT`
+5. Deploy
+6. Copy your URL (e.g., `https://heretic-ai-backend-xxxxx.onrender.com`)
+
+### Step 2: Deploy Frontend (Netlify)
+
+1. Go to [netlify.com](https://netlify.com)
+2. Drag and drop the repo or connect GitHub
+3. Set:
+   - Build command: (leave blank)
+   - Publish directory: `.` (root)
+4. Deploy
+5. Get your Netlify URL
+
+### Step 3: Update Frontend (if needed)
+
+In `index.html`, line ~115, update:
+```javascript
+return `https://your-backend-url.onrender.com`;
+```
+
+### Step 4: Open on iPhone
+
+1. Open Safari
+2. Go to your Netlify URL
+3. Tap Share → Add to Home Screen
+4. Opens like an app!
+
+## Local Testing
+
+### Terminal 1: Backend
 ```bash
 cd backend
-python3 -m venv .venv
-source .venv/bin/activate
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 2) Open the iPhone app in Xcode
+### Terminal 2: Frontend
+```bash
+python3 -m http.server 8000
+# or just open index.html in a browser
+```
 
-Open the folder `ios/HereticAI` as a SwiftUI app project or copy the source files into a new Xcode app target.
+Then visit: `http://localhost:8000`
 
-Update the API base URL in `ios/HereticAI/ChatService.swift` if needed.
+## API Endpoints
 
-### 3) Build and run
+### `GET /`
+Health check
 
-- Device or simulator: iPhone 15 / iOS 17+
-- Xcode 15+
+### `POST /api/chat`
+Send a message
+```json
+{
+  "message": "What is Heretic?",
+  "stream": false
+}
+```
 
-## Project files
+### `POST /api/config/load`
+Upload TOML config
 
-- `backend/app.py` — FastAPI chat API
-- `backend/requirements.txt` — backend dependencies
-- `ios/HereticAI/HereticAIApp.swift` — app entry point
-- `ios/HereticAI/ContentView.swift` — chat UI
-- `ios/HereticAI/ChatViewModel.swift` — app state and message sending
-- `ios/HereticAI/ChatService.swift` — API client
-- `ios/HereticAI/Models.swift` — data structures
+### `GET /api/status`
+Get system status
 
-## Next steps
+## Environment Detection
 
-- Replace the mock reply generator with an actual Heretic model client
-- Add conversation persistence
-- Add streaming responses for a more native chat feel
-- Add settings for temperature, context window, and model selection
-- Add voice input and image support if desired
+The app auto-detects:
+- **localhost** → uses `http://localhost:8000`
+- **Netlify domain** → uses backend route `/api`
+- **Production** → uses environment variable or stored URL
 
+## Next Steps
+
+1. **Add real LLM**: Replace mock responses in `backend/app.py` with OpenAI/Anthropic/local model
+2. **Add streaming**: Enable real-time response streaming
+3. **Add auth**: Add API key validation
+4. **Add persistence**: Save chat history to database
+
+## Troubleshooting
+
+**App shows "OFFLINE"**
+- Check backend URL in `index.html`
+- Verify backend is running
+- Check CORS settings
+
+**App stuck on "Configuring"**
+- Hard refresh Safari (AA button → Settings → Clear History)
+- Try demo mode (click settings icon)
+
+**Backend errors**
+- Check logs: `heroku logs -t`
+- Verify `.toml` files are valid
+
+## License
+
+AGPL-3.0 (same as Heretic)
