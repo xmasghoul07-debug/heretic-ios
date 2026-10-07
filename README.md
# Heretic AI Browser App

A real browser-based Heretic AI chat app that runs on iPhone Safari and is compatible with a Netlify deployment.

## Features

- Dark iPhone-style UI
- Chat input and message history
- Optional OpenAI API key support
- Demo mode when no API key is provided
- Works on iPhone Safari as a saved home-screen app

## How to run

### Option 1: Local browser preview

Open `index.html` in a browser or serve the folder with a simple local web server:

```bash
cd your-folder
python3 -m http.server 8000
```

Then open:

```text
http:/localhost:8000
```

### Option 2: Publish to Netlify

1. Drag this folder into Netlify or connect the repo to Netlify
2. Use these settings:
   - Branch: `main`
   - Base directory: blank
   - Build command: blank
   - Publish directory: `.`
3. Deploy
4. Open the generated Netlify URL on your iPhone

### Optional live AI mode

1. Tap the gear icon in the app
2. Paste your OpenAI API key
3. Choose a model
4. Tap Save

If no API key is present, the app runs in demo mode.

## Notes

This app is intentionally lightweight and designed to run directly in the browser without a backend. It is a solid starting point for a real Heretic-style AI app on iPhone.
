@@ -1,0 +1,206 @@
+const messagesEl = document.getElementById('messages');
+const messageInput = document.getElementById('messageInput');
+const sendBtn = document.getElementById('sendBtn');
+const clearBtn = document.getElementById('clearBtn');
+const settingsToggle = document.getElementById('settingsToggle');
+const settingsPanel = document.getElementById('settingsPanel');
+const apiKeyInput = document.getElementById('apiKeyInput');
+const modelSelect = document.getElementById('modelSelect');
+const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+const demoModeBtn = document.getElementById('demoModeBtn');
+
+const STORAGE_KEY = 'heretic-ai-settings';
+
+const defaultState = {
+  apiKey: '',
+  model: 'gpt-4o-mini'
+};
+
+let state = { ...defaultState };
+
+function loadState() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return;
+  try {
+    const saved = JSON.parse(raw);
+    state = { ...defaultState, ...saved };
+  } catch (error) {
+    state = { ...defaultState };
+  }
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function syncInputs() {
+  apiKeyInput.value = state.apiKey;
+  modelSelect.value = state.model;
+}
+
+function addMessage(text, role = 'assistant') {
+  const row = document.createElement('div');
+  row.className = `message-row ${role}`;
+
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble';
+  bubble.textContent = text;
+  row.appendChild(bubble);
+  messagesEl.appendChild(row);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function addSystemMessage(text) {
+  addMessage(text, 'system');
+}
+
+function defaultDemoReply(prompt) {
+  const lower = prompt.toLowerCase();
+
+  if (lower.includes('hello') || lower.includes('hi')) {
+    return 'Hello! I’m your Heretic AI demo assistant. Add an OpenAI API key in settings to use a real model.';
+  }
+
+  if (lower.includes('status') || lower.includes('what are you')) {
+    return 'I’m a browser-based Heretic AI chat client. It works in demo mode right now and can use your OpenAI key for live responses.';
+  }
+
+  if (lower.includes('code') || lower.includes('build')) {
+    return 'This version is a working browser chat app. The front-end is ready, and the settings panel lets you connect to OpenAI whenever you add your API key.';
+  }
+
+  return 'This is a real browser app shell for Heretic AI. Add your OpenAI API key in settings to enable live responses, or keep this in demo mode for testing the UI.';
+}
+
+async function fetchOpenAIResponse(prompt, model) {
+  const url = 'https://api.openai.com/v1/chat/completions';
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${state.apiKey}`
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: 'You are Heretic AI, a direct and helpful assistant.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 500
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`OpenAI request failed: ${response.status} — ${errorText}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+
+  if (!content) {
+    throw new Error('No response content received from OpenAI.');
+  }
+
+  return content.trim();
+}
+
+function autoResizeTextarea() {
+  messageInput.style.height = 'auto';
+  messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+}
+
+async function handleSend() {
+  const prompt = messageInput.value.trim();
+  if (!prompt) return;
+
+  addMessage(prompt, 'user');
+  messageInput.value = '';
+  autoResizeTextarea();
+
+  sendBtn.disabled = true;
+  addSystemMessage('Thinking...');
+
+  try {
+    let reply = '';
+
+    if (!state.apiKey || state.apiKey.trim() === '') {
+      reply = defaultDemoReply(prompt);
+    } else {
+      reply = await fetchOpenAIResponse(prompt, state.model);
+    }
+
+    const systemMsg = document.querySelector('.message-row.system:last-child .message-bubble');
+    if (systemMsg) {
+      systemMsg.textContent = reply;
+      systemMsg.parentElement.classList.remove('system');
+      systemMsg.parentElement.classList.add('assistant');
+    } else {
+      addMessage(reply, 'assistant');
+    }
+  } catch (error) {
+    const systemMsg = document.querySelector('.message-row.system:last-child .message-bubble');
+    if (systemMsg) {
+      systemMsg.textContent = error.message || 'Something went wrong.';
+      systemMsg.parentElement.classList.remove('system');
+      systemMsg.parentElement.classList.add('assistant');
+    } else {
+      addMessage('Could not generate a reply. Check your API key or try demo mode.', 'assistant');
+    }
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+
+function clearChat() {
+  messagesEl.innerHTML = '';
+  addSystemMessage('Heretic AI ready. Ask anything.');
+}
+
+function toggleSettings() {
+  settingsPanel.classList.toggle('hidden');
+}
+
+function saveSettings() {
+  state.apiKey = apiKeyInput.value.trim();
+  state.model = modelSelect.value;
+  saveState();
+  syncInputs();
+  settingsPanel.classList.add('hidden');
+
+  if (!state.apiKey) {
+    addSystemMessage('Demo mode enabled. Add an API key to use live OpenAI responses.');
+  } else {
+    addSystemMessage(`Live mode enabled with ${state.model}.`);
+  }
+}
+
+function setDemoMode() {
+  state.apiKey = '';
+  saveState();
+  syncInputs();
+  settingsPanel.classList.add('hidden');
+  addSystemMessage('Demo mode enabled.');
+}
+
+messageInput.addEventListener('input', autoResizeTextarea);
+messageInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    handleSend();
+  }
+});
+
+sendBtn.addEventListener('click', handleSend);
+clearBtn.addEventListener('click', clearChat);
+settingsToggle.addEventListener('click', toggleSettings);
+saveSettingsBtn.addEventListener('click', saveSettings);
+demoModeBtn.addEventListener('click', setDemoMode);
+
+loadState();
+syncInputs();
+clearChat();
+
+

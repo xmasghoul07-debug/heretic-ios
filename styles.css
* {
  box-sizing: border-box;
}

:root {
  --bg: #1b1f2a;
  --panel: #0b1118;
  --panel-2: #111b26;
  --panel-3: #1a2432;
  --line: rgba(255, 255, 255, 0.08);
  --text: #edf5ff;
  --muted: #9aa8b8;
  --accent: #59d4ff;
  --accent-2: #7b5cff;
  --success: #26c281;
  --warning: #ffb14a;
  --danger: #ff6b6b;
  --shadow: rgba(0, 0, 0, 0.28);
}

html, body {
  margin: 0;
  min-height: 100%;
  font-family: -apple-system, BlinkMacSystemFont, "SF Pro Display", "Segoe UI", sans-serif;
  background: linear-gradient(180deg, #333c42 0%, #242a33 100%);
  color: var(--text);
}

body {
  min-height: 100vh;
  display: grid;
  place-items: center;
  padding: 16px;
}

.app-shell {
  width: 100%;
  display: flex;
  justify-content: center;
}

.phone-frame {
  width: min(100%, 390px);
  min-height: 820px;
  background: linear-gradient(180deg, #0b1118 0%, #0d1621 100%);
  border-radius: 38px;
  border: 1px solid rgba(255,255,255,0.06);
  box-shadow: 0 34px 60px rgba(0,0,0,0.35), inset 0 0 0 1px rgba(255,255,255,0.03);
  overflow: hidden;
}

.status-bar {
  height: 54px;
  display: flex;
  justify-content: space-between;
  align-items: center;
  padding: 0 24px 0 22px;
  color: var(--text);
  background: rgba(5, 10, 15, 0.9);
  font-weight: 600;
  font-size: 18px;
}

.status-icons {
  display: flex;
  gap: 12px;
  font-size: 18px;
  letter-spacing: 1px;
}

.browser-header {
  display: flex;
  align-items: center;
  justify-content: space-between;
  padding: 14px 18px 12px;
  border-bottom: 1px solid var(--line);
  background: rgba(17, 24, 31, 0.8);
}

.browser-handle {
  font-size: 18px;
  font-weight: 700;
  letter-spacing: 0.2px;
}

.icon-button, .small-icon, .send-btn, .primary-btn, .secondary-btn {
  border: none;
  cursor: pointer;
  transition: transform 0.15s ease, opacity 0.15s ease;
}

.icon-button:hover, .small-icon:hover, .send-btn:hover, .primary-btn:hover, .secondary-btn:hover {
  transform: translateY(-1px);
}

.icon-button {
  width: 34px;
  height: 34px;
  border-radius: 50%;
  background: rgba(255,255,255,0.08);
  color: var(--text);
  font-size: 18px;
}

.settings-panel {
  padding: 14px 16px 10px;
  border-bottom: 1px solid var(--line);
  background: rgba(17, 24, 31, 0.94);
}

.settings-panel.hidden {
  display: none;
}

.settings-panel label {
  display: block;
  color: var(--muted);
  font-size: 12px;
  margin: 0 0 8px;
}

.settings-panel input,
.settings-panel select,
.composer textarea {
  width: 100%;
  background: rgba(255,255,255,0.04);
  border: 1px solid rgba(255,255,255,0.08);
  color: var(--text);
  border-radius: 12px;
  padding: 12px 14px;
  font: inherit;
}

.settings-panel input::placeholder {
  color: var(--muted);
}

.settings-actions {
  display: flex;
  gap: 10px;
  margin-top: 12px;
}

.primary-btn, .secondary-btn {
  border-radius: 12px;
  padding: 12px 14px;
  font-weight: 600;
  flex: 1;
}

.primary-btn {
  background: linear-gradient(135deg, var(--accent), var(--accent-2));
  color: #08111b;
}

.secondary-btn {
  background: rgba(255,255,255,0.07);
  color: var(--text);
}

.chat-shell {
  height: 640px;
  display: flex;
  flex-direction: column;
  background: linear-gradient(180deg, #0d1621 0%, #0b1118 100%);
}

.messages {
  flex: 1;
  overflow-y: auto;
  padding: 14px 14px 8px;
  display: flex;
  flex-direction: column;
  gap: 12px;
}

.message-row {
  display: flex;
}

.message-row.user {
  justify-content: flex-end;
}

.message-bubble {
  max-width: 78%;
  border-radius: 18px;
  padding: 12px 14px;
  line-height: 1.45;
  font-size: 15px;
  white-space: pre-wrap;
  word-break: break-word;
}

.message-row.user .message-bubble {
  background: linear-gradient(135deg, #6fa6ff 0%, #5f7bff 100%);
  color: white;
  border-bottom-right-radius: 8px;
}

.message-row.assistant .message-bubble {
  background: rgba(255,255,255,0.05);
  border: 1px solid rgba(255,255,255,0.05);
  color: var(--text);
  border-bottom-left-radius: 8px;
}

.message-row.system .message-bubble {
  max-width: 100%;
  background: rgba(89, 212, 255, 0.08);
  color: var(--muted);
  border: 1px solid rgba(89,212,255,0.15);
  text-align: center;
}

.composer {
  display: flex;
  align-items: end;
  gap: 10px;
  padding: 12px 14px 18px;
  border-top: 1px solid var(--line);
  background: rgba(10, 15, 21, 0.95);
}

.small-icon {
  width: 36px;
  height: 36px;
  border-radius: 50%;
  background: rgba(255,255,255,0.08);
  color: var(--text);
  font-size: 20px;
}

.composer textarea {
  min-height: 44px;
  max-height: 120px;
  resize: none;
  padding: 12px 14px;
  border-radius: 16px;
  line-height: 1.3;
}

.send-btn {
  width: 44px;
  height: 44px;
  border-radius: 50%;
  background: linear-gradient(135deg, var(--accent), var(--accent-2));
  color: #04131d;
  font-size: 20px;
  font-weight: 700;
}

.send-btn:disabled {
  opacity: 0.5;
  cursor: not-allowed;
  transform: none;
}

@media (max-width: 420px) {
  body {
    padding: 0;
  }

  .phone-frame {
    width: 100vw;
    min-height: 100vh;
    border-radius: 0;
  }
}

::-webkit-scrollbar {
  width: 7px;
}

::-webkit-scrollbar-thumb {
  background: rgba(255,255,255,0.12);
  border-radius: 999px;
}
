@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b1118" />
+    <title>Heretic AI</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <div class="phone-frame">
+        <div class="status-bar">
+          <div class="time">1:35</div>
+          <div class="status-icons">
+            <span>◔</span>
+            <span>◐</span>
+            <span>◍</span>
+          </div>
+        </div>
+
+        <div class="browser-header">
+          <div class="browser-handle">Heretic AI</div>
+          <button id="settingsToggle" class="icon-button" aria-label="Settings">⚙</button>
+        </div>
+
+        <div id="settingsPanel" class="settings-panel hidden">
+          <label>
+            OpenAI API key
+            <input id="apiKeyInput" type="password" placeholder="sk-..." />
+          </label>
+
+          <label>
+            Model
+            <select id="modelSelect">
+              <option value="gpt-4o-mini">gpt-4o-mini</option>
+              <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+              <option value="gpt-4.1">gpt-4.1</option>
+            </select>
+          </label>
+
+          <div class="settings-actions">
+            <button id="saveSettingsBtn" class="primary-btn">Save</button>
+            <button id="demoModeBtn" class="secondary-btn">Use demo mode</button>
+          </div>
+        </div>
+
+        <main class="chat-shell">
+          <div id="messages" class="messages" aria-live="polite"></div>
+        </main>
+
+        <div class="composer">
+          <button id="clearBtn" class="small-icon" aria-label="Clear chat">⌫</button>
+          <textarea id="messageInput" rows="1" placeholder="Ask Heretic AI..."></textarea>
+          <button id="sendBtn" class="send-btn" aria-label="Send">➤</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
