@@ -1,0 +1,13 @@
+# Ignore Python cache
+__pycache__/
+.venv/
+*.pyc
+
+# macOS
+.DS_Store
+
+# Xcode
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xcworkspace
